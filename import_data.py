@@ -13,7 +13,7 @@ def datosYahoo(dataframe=None, asset_list=None,
         asset_list = []
     for a in asset_list:
         data = yf.download(a, start=start, end=finish)
-        dataframe[a] = data["Adj Close"]
+        dataframe[a] = data["Close"]
 
     if plot == True:
         plt.figure(figsize=(12.2, 4.5))
