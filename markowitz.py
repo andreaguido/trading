@@ -20,6 +20,7 @@ noa = len(assets)
 df = datosYahoo(asset_list=assets)
 #df=pd.read_csv('data.csv', index_col=0)
 
+
 # 3. Moving average strategy
 
 # Initialize SMA object
@@ -31,10 +32,10 @@ sma_instance = ma.SMA(
     series=False
 )
 
-backtesting=sma_instance.ma_backtesting(short_allowed=True, plot=True, percent_training=0.7)
+backtesting=sma_instance.ma_backtesting(short_allowed=True, plot=True, percent_training=0.5)
 
 # Portfolio returns based on strategy and comparison with benchmark
-portfolio_results=sma_instance.portfolio_simulation(weights=opts['x'], benchmark="even")
+portfolio_results=sma_instance.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even")
 ### NEED TO MAKE IT REUSABLE XXX
 
 # 4. Strategy momentum
@@ -45,5 +46,7 @@ mo_strategy=mo_instance.mo_backtesting()
 
 # 5. Mean reversion
 import MR as meanrev
-mr_instance = meanrev.mr(db=df, SMA=range(1, 40, 1), threshold=3)
+mr_instance = meanrev.mr(db=df, SMA=range(1, 10, 1), threshold=None)
 mr_strategy=mr_instance.mr_backtesting()
+portfolioresults_meanrev=mr_instance.portfolio_simulation(weights=opts['x'], benchmark='^IXIC', dumb_strategy="even")
+

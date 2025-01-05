@@ -192,7 +192,7 @@ class SMA:
         db_test = self.db.iloc[split_index:]  # Testing set
 
         # Step 1: Optimize SMA parameters on the training set
-        self.db = db_train
+        self.db = db_train.copy(deep=True)
         if short_allowed:
             training_results = self.MA_strategy_short(output_print=False, plot=False)
         else:
@@ -211,7 +211,7 @@ class SMA:
         # Step 2: Backtest on the testing set with optimal parameters
         self.sma1 = [int(ma1_median)]
         self.sma2 = [int(ma2_median)]
-        self.db = db_test
+        self.db = db_test.copy(deep=True)
         if short_allowed:
             testing_results = self.MA_strategy_short(output_print=True, plot=plot, full_data_out=True)
             self.testing_results=testing_results
@@ -232,7 +232,7 @@ class SMA:
             raise AttributeError("No testing results available. Run 'ma_backtesting' first.")
 
         # get daily results from strategy
-        d=self.testing_results['full_data']
+        d=self.testing_results['full_data'].copy(deep=True)
         d['portfolio_returns']=np.average(d.values, axis=1, weights=weights)
         if dumb_strategy == "even":
             d['dumb_strategy'] = np.average(d.values, axis=1, weights=np.array(len(d.columns) * [1. / len(d.columns),]))

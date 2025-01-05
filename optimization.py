@@ -22,7 +22,7 @@ pvols=[]
 
 
 
-for p in range (1500):
+for p in range (15000):
 
     weights = np.random.random(noa)
 

@@ -4,6 +4,8 @@ class mr:
         self.series = series
         self.SMA = SMA
         self.threshold=threshold
+        self.testing_results = []
+
 
     def MR_strategy(self, plot=False, data_testing_mode=False):
         import pandas as pd
@@ -34,10 +36,10 @@ class mr:
             d[f'{asset}_Returns'] = np.log(d[asset] / d[asset].shift(1))
 
         for s in self.SMA:
-            print("SUCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, ", s)
             for asset in assets:
                 d[f'{asset}_SMA']=d[asset].rolling(window=s).mean()
                 d[f'{asset}_distance']=d[asset]-d[f'{asset}_SMA']
+                self.threshold=d[f'{asset}_distance'].std()
                 d[f'{asset}_position']=np.where(d[f'{asset}_distance']>self.threshold, -1, np.nan)
                 d[f'{asset}_position']=np.where(d[f'{asset}_distance']<-self.threshold, 1, d[f'{asset}_position'])
                 d[f'{asset}_position']=np.where(d[f'{asset}_distance']*d[f'{asset}_distance'].shift(1)<0, 0, d[f'{asset}_position'])
@@ -110,14 +112,40 @@ class mr:
         print(training_results['results'])
 
         print("Optimal Parameters from Training:")
-        print(f"MO Median: {sma_median}")
+        print(f"MA Median: {sma_median}")
 
         # Step 2: Backtest on the testing set with optimal parameters
-        self.sma = [int(sma_median)]
+        self.SMA = [int(sma_median)]
         self.db = db_test
-        testing_results = self.MR_strategy(plot=True, data_testing_mode=True)
+        self.testing_results = self.MR_strategy(plot=False, data_testing_mode=True)
 
         print("\nTesting Results:")
-        print(testing_results['results'])
+        print(self.testing_results['results'])
 
-        return {'testing_results':testing_results, 'training_results':training_results}
+        return {'testing_results':self.testing_results, 'training_results':training_results}
+
+
+    def portfolio_simulation(self, weights=None, dumb_strategy=None, benchmark=None):
+        import numpy as np
+        import import_data
+        import matplotlib.pyplot as plt
+
+        if not hasattr(self, 'testing_results'):
+            raise AttributeError("No testing results available. Run 'ma_backtesting' first.")
+
+        # get daily results from strategy
+        d=self.testing_results['full_data'].copy(deep=True)
+        d['portfolio_returns']=np.average(d.values, axis=1, weights=weights)
+        if dumb_strategy == "even":
+            d['dumb_strategy'] = np.average(d.values, axis=1, weights=np.array(len(d.columns) * [1. / len(d.columns),]))
+
+        benchmark_prices = import_data.datosYahoo(asset_list=[benchmark], start=d.index.min())
+        benchmark_rets = np.log(benchmark_prices / benchmark_prices.shift(1))
+        d['benchmark'] = benchmark_rets[benchmark].cumsum().apply(np.exp)
+
+        d[['portfolio_returns', 'benchmark', 'dumb_strategy']].plot()
+        plt.savefig('benchmark_comparison.png')
+
+        return d
+
+
