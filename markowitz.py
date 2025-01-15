@@ -7,35 +7,54 @@ import matplotlib.pyplot as plt
 import MR_function as mo
 
 # 1. Define assets
-assets = ["AAPL", "MSFT", "AMZN", "GOOG", "GOOGL", "META", "INTC", "NVDA", "TSM", "AVGO",   # tech
-          "TSLA","NFLX",                                                                    # consumer (electronics)
+assets = ["AAPL",
+          "MSFT",
+          "AMZN",
+          "GOOG",
+          "GOOGL",
+          "META",
+          "INTC",
+          "NVDA",
+          "TSM",
+          "AVGO",   # tech
+          "TSLA",
+          "NFLX",                                                                    # consumer (electronics)
           "V",                                                                              # consumer (business services)
           "PFE",
           "XOM", "CVX",                                                                      # energy (oil)
-          "JPM", "AXP"
+          "JPM",
+          "AXP"
           ]
 noa = len(assets)
 
 # 2. Import data
-df = datosYahoo(asset_list=assets)
+df = datosYahoo(asset_list=assets, finish="2020-12-31")
 #df=pd.read_csv('data.csv', index_col=0)
 
 
 # 3. Moving average strategy
 
 # Initialize SMA object
-sma_instance = ma.SMA(
-    #symbol=assets,
+sma_instance_long = ma.SMA(
     db=df,
     SMA1=range(10, 50, 10),
     SMA2=range(50, 200, 20),
     series=False
 )
 
-backtesting=sma_instance.ma_backtesting(short_allowed=True, plot=True, percent_training=0.5)
+sma_instance_short = ma.SMA(
+    db=df,
+    SMA1=range(10, 50, 10),
+    SMA2=range(50, 200, 20),
+    series=False
+)
+
+backtesting_long=sma_instance_long.ma_backtesting(short_allowed=False, plot=False, percent_training=0.7)
+backtesting_short=sma_instance_short.ma_backtesting(short_allowed=True, plot=False, percent_training=0.7)
 
 # Portfolio returns based on strategy and comparison with benchmark
-portfolio_results=sma_instance.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even")
+portfolio_result_long=sma_instance_long.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even", plot_name="long")
+portfolio_result_short=sma_instance_short.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even", plot_name="short")
 ### NEED TO MAKE IT REUSABLE XXX
 
 # 4. Strategy momentum

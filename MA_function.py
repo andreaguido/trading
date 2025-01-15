@@ -108,12 +108,14 @@ class SMA:
 
         return {'results': results, 'best_MA': best_MA, 'MA1_median': ma1, 'MA2_median': ma2, 'full_data':full_data_strategy}
 
-    def MA_strategy_long(self, output_print=False, plot=True):
+    def MA_strategy_long(self, output_print=False, plot=True, full_data_out=False):
         import pandas as pd
         import numpy as np
         from itertools import product
         import matplotlib.pyplot as plt
         import os
+        import matplotlib
+        matplotlib.use('Agg')
 
         if plot:
             # create a dir for plots
@@ -130,7 +132,7 @@ class SMA:
         # Determine assets based on series flag
         assets = [self.db.name] if self.series else self.db.columns
 
-        # Calculate moving averages and strategy results
+        # Brute force: Calculate moving averages and strategy results
         for SMA1, SMA2 in product(self.sma1, self.sma2):
             d = self.db.copy(deep=True)
             if self.series:
@@ -146,32 +148,54 @@ class SMA:
             for asset in assets:
                 d[f'{asset}_Returns'] = np.log(d[asset] / d[asset].shift(1))
                 d[f'{asset}_Strategy_no_short'] = d[f'{asset}_Position'].shift(1) * d[f'{asset}_Returns']
-                #d[f'{asset}_Strategy_yes_short'] = d[f'{asset}_Position2'].shift(1) * d[f'{asset}_Returns']
+
+                if plot:
+                    plt.ioff()
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    ax.set_title(f"Prices : SMA1: {SMA1}, SMA2: {SMA2}")
+                    ax.legend(loc="best")
+                    filename = f"Prices_{asset}_SMA1-{SMA1}_SMA2-{SMA2}.png"
+                    d[[asset, f'{asset}_MA1', f'{asset}_MA2', f'{asset}_Position']].plot(
+                        secondary_y=f'{asset}_Position')
+                    plt.savefig(os.path.join(output_dir, filename))
+                    plt.close(fig)
+
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    ax.set_title(f"Returns : SMA1: {SMA1}, SMA2: {SMA2}")
+                    ax.legend(loc="best")
+                    filename = f"Returns_{asset}_SMA1-{SMA1}_SMA2-{SMA2}.png"
+                    d[[f'{asset}_Returns', f'{asset}_Strategy_no_short']].cumsum().apply(np.exp).plot()
+                    # np.exp(temp).cumsum().plot()
+                    plt.savefig(os.path.join(output_dir, filename))
+                    plt.close(fig)
+                plt.close('all')
 
                 if output_print:
                     print(f"******** {SMA1} *** {SMA2} ********")
                     print(f"Asset: {asset}")
-                    #print("Returns:", np.exp(d[[f'{asset}_Returns', f'{asset}_Strategy_no_short', f'{asset}_Strategy_yes_short']].sum()))
                     print("Returns:", np.exp(d[[f'{asset}_Returns', f'{asset}_Strategy_no_short']].sum()))
                     print("Volatility:", np.exp(d[[f'{asset}_Returns', f'{asset}_Strategy_no_short']].std() * 252**0.5))
 
-                if plot:
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    ax.set_title(f"SMA1: {SMA1}, SMA2: {SMA2}")
-                    ax.legend(loc="best")
-                    filename = f"{asset}_SMA1-{SMA1}_SMA2-{SMA2}.png"
-                    d[[asset, f'{asset}_MA1', f'{asset}_MA2', f'{asset}_Position']].plot(secondary_y=f'{asset}_Position')
-                    #plt.title(f'{SMA1}-{SMA2}')
-                    plt.savefig(os.path.join(output_dir, filename))
-                    plt.close(fig)
+                # cumulative results
+                # Ensure d[[...]] results in a DataFrame or Series as expected
+                data_to_append = d[[f'{asset}_Strategy_no_short']].cumsum().apply(np.exp)
 
+                # Check if `full_data_strategy` is initialized
+                if 'full_data_strategy' not in locals():
+                    full_data_strategy = pd.DataFrame()
+
+                if full_data_out:
+                    full_data_strategy = pd.concat(
+                        [full_data_strategy, data_to_append],
+                        axis=1
+                    )
+
+                # aggregated results
                 results = results.append(pd.DataFrame({
                     'SMA1': SMA1, 'SMA2': SMA2, 'ASSET': asset,
                     'STRATEGY_NO_SHORT': np.exp(d[f'{asset}_Strategy_no_short'].sum()),
-                    #'STRATEGY_YES_SHORT': np.exp(d[f'{asset}_Strategy_yes_short'].sum()),
                     'Returns': np.exp(d[f'{asset}_Returns'].sum()),
                     'V_NO_SHORT': np.exp(d[f'{asset}_Strategy_no_short'].std() * 252**0.5),
-                    #'V_YES_SHORT': np.exp(d[f'{asset}_Strategy_yes_short'].std() * 252**0.5),
                     'delta': np.exp(d[f'{asset}_Strategy_no_short'].sum()) - np.exp(d[f'{asset}_Returns'].sum()),
                     #'strategy': "LONG" if np.exp(d[f'{asset}_Strategy_no_short'].sum()) > np.exp(d[f'{asset}_Strategy_yes_short'].sum()) else "SHORT"
                 }, index=[0]), ignore_index=True)
@@ -182,7 +206,10 @@ class SMA:
         ma1 = best_MA['SMA1'].median()
         ma2 = best_MA['SMA2'].median()
 
-        return {'results': results, 'best_MA': best_MA, 'MA1_median': ma1, 'MA2_median': ma2}
+        full_data = [d] if full_data_out else []
+
+        return {'results': results, 'best_MA': best_MA, 'MA1_median': ma1, 'MA2_median': ma2,
+                'full_data': full_data_strategy}
 
     def ma_backtesting(self, short_allowed=True, plot=True, percent_training=0.7):
 
@@ -214,16 +241,17 @@ class SMA:
         self.db = db_test.copy(deep=True)
         if short_allowed:
             testing_results = self.MA_strategy_short(output_print=True, plot=plot, full_data_out=True)
-            self.testing_results=testing_results
         else:
-            testing_results = self.MA_strategy_long(output_print=True, plot=plot)
+            testing_results = self.MA_strategy_long(output_print=True, plot=plot, full_data_out=True)
+
+        self.testing_results=testing_results
 
         print("\nTesting Results:")
         print(testing_results['results'])
 
         return {'testing_results':testing_results, 'training_results':training_results}
 
-    def portfolio_simulation(self, weights=None, dumb_strategy=None, benchmark=None):
+    def portfolio_simulation(self, weights=None, dumb_strategy=None, benchmark=None, plot_name=None):
         import numpy as np
         import import_data
         import matplotlib.pyplot as plt
@@ -242,6 +270,6 @@ class SMA:
         d['benchmark'] = benchmark_rets[benchmark].cumsum().apply(np.exp)
 
         d[['portfolio_returns', 'benchmark', 'dumb_strategy']].plot()
-        plt.savefig('benchmark_comparison.png')
+        plt.savefig(f'{plot_name}_benchmark_comparison.png')
 
         return d
