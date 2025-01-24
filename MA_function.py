@@ -90,13 +90,15 @@ class SMA:
                     )
 
                 # aggregated results
-                results = results.append(pd.DataFrame({
+                new_row = pd.DataFrame({
                     'SMA1': SMA1, 'SMA2': SMA2, 'ASSET': asset,
                     'STRATEGY_YES_SHORT': np.exp(d[f'{asset}_Strategy_yes_short'].sum()),
                     'Returns': np.exp(d[f'{asset}_Returns'].sum()),
-                    'V_YES_SHORT': np.exp(d[f'{asset}_Strategy_yes_short'].std() * 252**0.5),
+                    'V_YES_SHORT': np.exp(d[f'{asset}_Strategy_yes_short'].std() * 252 ** 0.5),
                     'delta': np.exp(d[f'{asset}_Strategy_yes_short'].sum()) - np.exp(d[f'{asset}_Returns'].sum()),
-                }, index=[0]), ignore_index=True)
+                }, index=[0])
+
+                results = pd.concat([results, new_row], ignore_index=True)
 
         # Identify best MA parameters
         idx = results.groupby('ASSET')['delta'].apply(lambda x: x.idxmax())

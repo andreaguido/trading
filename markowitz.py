@@ -5,6 +5,7 @@ import MA_function as ma
 import numpy as np
 import matplotlib.pyplot as plt
 import MR_function as mo
+import optimization as opt
 
 # 1. Define assets
 assets = ["AAPL",
@@ -25,10 +26,16 @@ assets = ["AAPL",
           "JPM",
           "AXP"
           ]
+
+assets = ["RENDER-USD",
+          "SOL-USD",
+          "ETH-USD",
+          "BTC-USD",
+          "DOGE-USD"]
 noa = len(assets)
 
 # 2. Import data
-df = datosYahoo(asset_list=assets, finish="2020-12-31")
+df = datosYahoo(asset_list=assets)
 #df=pd.read_csv('data.csv', index_col=0)
 
 
@@ -49,11 +56,12 @@ sma_instance_short = ma.SMA(
     series=False
 )
 
-backtesting_long=sma_instance_long.ma_backtesting(short_allowed=False, plot=False, percent_training=0.7)
+backtesting_long=sma_instance_long.ma_backtesting(short_allowed=False, plot=True, percent_training=0.7)
 backtesting_short=sma_instance_short.ma_backtesting(short_allowed=True, plot=False, percent_training=0.7)
 
+
 # Portfolio returns based on strategy and comparison with benchmark
-portfolio_result_long=sma_instance_long.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even", plot_name="long")
+portfolio_result_long=sma_instance_long.portfolio_simulation(weights=opts['x'], benchmark="BITW", dumb_strategy="even", plot_name="long")
 portfolio_result_short=sma_instance_short.portfolio_simulation(weights=opts['x'], benchmark="^IXIC", dumb_strategy="even", plot_name="short")
 ### NEED TO MAKE IT REUSABLE XXX
 

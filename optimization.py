@@ -1,88 +1,46 @@
-# Calculate returns
+import numpy as np
 
+# Calculate returns
 rets = np.log(df / df.shift(1))
 
-#rets.hist(bins=40)
-
-
-
 def port_ret(weights):
-
     return np.sum(rets.mean() * weights) * 252
 
 def port_vol(weights):
-
     return np.sqrt(np.dot(weights.T, np.dot(rets.cov() * 252, weights)))
 
-
-
 pret=[]
-
 pvols=[]
 
-
-
-for p in range (1500):
-
-    weights = np.random.random(noa)
-
-    weights /= np.sum(weights)
-
-    pret.append(port_ret(weights))
-
-    pvols.append(port_vol(weights))
-
-
-
-
+def run_optimization(weights, port_ret):
+    for p in range (5000):
+        weights = np.random.random(noa)
+        weights /= np.sum(weights)
+        pret.append(port_ret(weights))
+        pvols.append(port_vol(weights))
 
 pret = np.array(pret)
-
 pvols = np.array(pvols)
 
 
-
 plt.figure(figsize=(10, 6))
-
-plt.scatter(pvols, pret, c=pret / pvols,
-
-marker='o', cmap='coolwarm')
-
+plt.scatter(pvols, pret, c=pret / pvols, marker='o', cmap='coolwarm')
 plt.xlabel('expected volatility')
-
 plt.ylabel('expected return')
-
 plt.colorbar(label='Sharpe ratio')
-
-
 
 ## Max return
 
 def min_func_sharpe(weights):
-
     return -port_ret(weights) / port_vol(weights)
 
-
-
-
-
 cons = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-
 bnds = tuple((0, 1) for x in range(noa))
-
 eweights = np.array(noa * [1. / noa,])
-
-
 
 min_func_sharpe(eweights)
 
-
-
-
-
 opts = sco.minimize(min_func_sharpe, eweights, method='SLSQP', bounds=bnds, constraints=cons)
-
-
 
 print(opts)
 
